@@ -10,6 +10,8 @@ import json
 sys.path.append(os.path.dirname(__file__))
 from core.utils import DEFAULT_LEVEL_ORDER, DEFAULT_LOCATION_MAP
 
+app = FastAPI()
+
 @app.post("/api/extract")
 async def extract(file: UploadFile = File(...), config: str = Form(...)):
     try:
