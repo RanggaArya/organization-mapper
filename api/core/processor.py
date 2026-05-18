@@ -113,8 +113,7 @@ class MappingProcessor:
 
     def _clean(self):
         for col in self.df.columns:
-            if pd.api.types.is_string_dtype(self.df[col]):
-                self.df[col] = self.df[col].apply(clean_text)
+            self.df[col] = self.df[col].apply(clean_text)
 
     def _setup_companies(self):
         comp_col = self._c("Company")

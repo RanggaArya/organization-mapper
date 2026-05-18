@@ -36,7 +36,7 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
         )
         
         buf = BytesIO(contents)
-        df = pd.read_excel(buf, sheet_name=sheet_name, header=header_row - 1)
+        df = pd.read_excel(buf, sheet_name=sheet_name, header=header_row - 1, dtype=str)
         # Strip column names to match the mapping which comes from stripped headers
         df.columns = [str(c).strip() for c in df.columns]
         
