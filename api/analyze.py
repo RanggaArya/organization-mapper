@@ -16,12 +16,27 @@ async def analyze(file: UploadFile = File(...)):
         result = {}
         for sheet in sheets:
             ws = wb[sheet]
+            
+            # Read first 10 rows for preview
+            data = []
+            for i, row in enumerate(ws.iter_rows(min_row=1, max_row=10, values_only=True)):
+                data.append([str(cell) if cell is not None else "" for cell in row])
+            
+            # Extract headers from first 3 rows for column mapping
             headers = []
-            for row in ws.iter_rows(min_row=1, max_row=3, values_only=True):
+            for row in data[:3]:
                 for cell in row:
-                    if cell is not None and str(cell).strip():
+                    if str(cell).strip():
                         headers.append(str(cell).strip())
-            result[sheet] = list(dict.fromkeys(headers))
+            
+            # Pad rows with empty strings so they are all the same length
+            max_cols = max([len(r) for r in data]) if data else 0
+            padded_data = [r + [""] * (max_cols - len(r)) for r in data]
+            
+            result[sheet] = {
+                "columns": list(dict.fromkeys(headers)),
+                "preview": padded_data
+            }
             
         return JSONResponse({"sheets": result})
     except Exception as e:

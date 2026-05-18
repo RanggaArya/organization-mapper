@@ -18,6 +18,7 @@ async def extract(file: UploadFile = File(...), config: str = Form(...)):
         
         buf = BytesIO(contents)
         df = pd.read_excel(buf, sheet_name=sheet_name, header=header_row - 1)
+        
         # Strip column names to match the mapping which comes from stripped headers
         df.columns = [str(c).strip() for c in df.columns]
         
@@ -40,15 +41,23 @@ async def extract(file: UploadFile = File(...), config: str = Form(...)):
         level_counts = {}
         if lev_col and lev_col in df.columns:
             for lev in levels:
-                # case insensitive match
                 count = len(df[df[lev_col].apply(lambda x: str(x).strip().upper() if not pd.isna(x) else "") == lev])
                 level_counts[lev] = count
+                
+        # Generate data preview
+        preview_df = df.head(50).fillna("")
+        preview_data = preview_df.values.tolist()
+        columns = preview_df.columns.tolist()
                 
         return JSONResponse({
             "companies": companies,
             "levels": levels,
             "level_counts": level_counts,
-            "locations": locations
+            "locations": locations,
+            "preview_data": preview_data,
+            "preview_columns": columns,
+            "total_rows": len(df),
+            "total_cols": len(columns)
         })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
