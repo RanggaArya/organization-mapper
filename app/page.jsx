@@ -305,7 +305,11 @@ export default function Home() {
         </div>
         <div className="sidebar-nav">
           {STEPS.map((s) => (
-            <div key={s.id} className={`nav-item ${step === s.id ? 'active' : ''} ${step > s.id ? 'completed' : ''}`}>
+            <div 
+              key={s.id} 
+              className={`nav-item ${step === s.id ? 'active' : ''} ${step > s.id ? 'completed clickable' : ''}`}
+              onClick={() => { if (s.id < step) setStep(s.id); }}
+            >
               <div className="step-circle">{step > s.id ? '✓' : s.id}</div>
               {s.icon} {s.label}
             </div>

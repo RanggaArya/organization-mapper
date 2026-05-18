@@ -94,6 +94,15 @@ body {
   cursor: default;
 }
 
+.nav-item.clickable {
+  cursor: pointer;
+}
+
+.nav-item.clickable:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+
 .nav-item .step-circle {
   width: 20px;
   height: 20px;
