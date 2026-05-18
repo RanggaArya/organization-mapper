@@ -141,7 +141,7 @@ body {
   flex: 1;
   margin-left: var(--sidebar-width);
   padding: 2rem 3rem;
-  max-width: 100%;
+  max-width: 1400px;
 }
 
 .step-title {
@@ -394,3 +394,82 @@ body {
   padding: 1rem;
   text-align: center;
 }
+
+/* CSS Bar Chart */
+.chart-container {
+  display: flex;
+  align-items: flex-end;
+  height: 250px;
+  margin-top: 2rem;
+  padding: 1rem 0 2rem 3rem;
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  gap: 2rem;
+  position: relative;
+}
+
+.chart-y-axis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding-right: 0.5rem;
+  text-align: right;
+  width: 2.5rem;
+}
+
+.chart-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.chart-bars {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 40px;
+  height: 100%;
+}
+
+.chart-bar-bottom {
+  background-color: #06b6d4; /* Cyan */
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+}
+
+.chart-bar-top {
+  background-color: #8b5cf6; /* Purple */
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+}
+
+.chart-label {
+  position: absolute;
+  bottom: -40px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  transform: rotate(-90deg);
+  transform-origin: top left;
+  white-space: nowrap;
+  margin-top: 10px;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.legend-item { display: flex; align-items: center; gap: 0.5rem; }
+.legend-color { width: 12px; height: 12px; border-radius: 2px; }

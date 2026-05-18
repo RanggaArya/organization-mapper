@@ -57,6 +57,9 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
         # Prepare JSON response
         b64 = base64.b64encode(out_bytes).decode("utf-8")
         
+        csv_bytes = df_result.to_csv(index=False).encode('utf-8')
+        csv_b64 = base64.b64encode(csv_bytes).decode("utf-8")
+        
         preview_df = df_result.head(50).fillna("")
         preview_data = preview_df.values.tolist()
         columns = preview_df.columns.tolist()
@@ -64,15 +67,33 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
         unique_companies = df_result["Code Company"].nunique() if "Code Company" in df_result.columns else 0
         unique_codes = df_result["Code Position"].nunique() if "Code Position" in df_result.columns else len(df_result)
         
+        detailed_stats = []
+        target_fields = ["Company", "Directorate", "Division", "Department", "Section", "Location", "Level", "Job Title", "Position"]
+        for field in target_fields:
+            orig_col = mapping_config.column_mapping.get(field)
+            code_col = f"Code {field}"
+            if orig_col in df_result.columns and code_col in df_result.columns:
+                orig_unique = df_result[orig_col].dropna().nunique()
+                code_unique = df_result[code_col].dropna().nunique()
+                examples = df_result[orig_col].dropna().unique()[:3].tolist()
+                detailed_stats.append({
+                    "field": field,
+                    "orig_unique": int(orig_unique),
+                    "code_unique": int(code_unique),
+                    "examples": ", ".join([str(x) for x in examples]) + (", ..." if len(df_result[orig_col].dropna().unique()) > 3 else "")
+                })
+        
         return JSONResponse({
             "excel_base64": b64,
+            "csv_base64": csv_b64,
             "preview_data": preview_data,
             "preview_columns": columns,
             "stats": {
                 "total_rows": len(df_result),
                 "companies": unique_companies,
                 "unique_codes": unique_codes,
-                "time": round(time.time() - start_time, 2)
+                "time": round(time.time() - start_time, 2),
+                "detailed": detailed_stats
             }
         })
     except Exception as e:

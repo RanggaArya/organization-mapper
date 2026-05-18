@@ -68,6 +68,8 @@ export default function Home() {
   
   // Step 5 State
   const [downloadUrl, setDownloadUrl] = useState(null);
+  const [csvDownloadUrl, setCsvDownloadUrl] = useState(null);
+  const [showStats, setShowStats] = useState(false);
   const [resultStats, setResultStats] = useState({});
   const [resultPreviewData, setResultPreviewData] = useState([]);
   const [resultPreviewCols, setResultPreviewCols] = useState([]);
@@ -245,7 +247,17 @@ export default function Home() {
       const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       
+      const csvCharacters = atob(data.csv_base64);
+      const csvNumbers = new Array(csvCharacters.length);
+      for (let i = 0; i < csvCharacters.length; i++) {
+        csvNumbers[i] = csvCharacters.charCodeAt(i);
+      }
+      const csvArray = new Uint8Array(csvNumbers);
+      const csvBlob = new Blob([csvArray], { type: 'text/csv' });
+      const csvUrl = window.URL.createObjectURL(csvBlob);
+      
       setDownloadUrl(url);
+      setCsvDownloadUrl(csvUrl);
       setResultStats(data.stats || {});
       setResultPreviewData(data.preview_data || []);
       setResultPreviewCols(data.preview_columns || []);
@@ -396,29 +408,6 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="container-box">
-              <div className="container-title">🔗 Mapping Kolom</div>
-              <p style={{fontSize:'0.9rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>Cocokkan setiap field target dengan kolom yang sesuai di file Excel Anda.</p>
-              
-              <div className="grid-cols-mapping">
-                {targetFields.map(field => (
-                  <div key={field} className="form-group">
-                    <label className="form-label" style={{color:'#fbbf24'}}>❖ {field}</label>
-                    <select 
-                      className="form-control" 
-                      value={columnMapping[field] || ''}
-                      onChange={e => setColumnMapping({...columnMapping, [field]: e.target.value})}
-                    >
-                      <option value="">-- Abaikan --</option>
-                      {getHeaderColumns().map((col, idx) => (
-                        <option key={`${col}-${idx}`} value={col}>{col}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {previewData.length > 0 && (
               <div className="container-box" style={{padding: 0, overflow: 'hidden'}}>
                 <div className="container-title" style={{padding: '1.5rem 1.5rem 0.5rem', marginBottom: 0}}>👁️ Preview Data Terkonfigurasi</div>
@@ -447,6 +436,29 @@ export default function Home() {
                 </div>
               </div>
             )}
+
+            <div className="container-box">
+              <div className="container-title">🔗 Mapping Kolom</div>
+              <p style={{fontSize:'0.9rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>Cocokkan setiap field target dengan kolom yang sesuai di file Excel Anda.</p>
+              
+              <div className="grid-cols-mapping">
+                {targetFields.map(field => (
+                  <div key={field} className="form-group">
+                    <label className="form-label" style={{color:'#fbbf24'}}>❖ {field}</label>
+                    <select 
+                      className="form-control" 
+                      value={columnMapping[field] || ''}
+                      onChange={e => setColumnMapping({...columnMapping, [field]: e.target.value})}
+                    >
+                      <option value="">-- Abaikan --</option>
+                      {getHeaderColumns().map((col, idx) => (
+                        <option key={`${col}-${idx}`} value={col}>{col}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div style={{display: 'flex', gap:'1rem'}}>
               <button className="btn" onClick={() => setStep(1)} style={{flex:1}}>← Kembali ke Upload</button>
@@ -715,13 +727,86 @@ export default function Home() {
             </div>
 
             <div className="container-box">
+              <div className="container-title" style={{cursor:'pointer'}} onClick={() => setShowStats(!showStats)}>
+                <span style={{width:'20px', display:'inline-block'}}>{showStats ? 'v' : '>'}</span> 
+                📈 Statistik Detail
+              </div>
+              
+              {showStats && resultStats.detailed && (
+                <div style={{marginTop:'1.5rem'}}>
+                  <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>
+                    Perbandingan jumlah nilai asli (unik) dan jumlah kode yang dihasilkan.
+                  </p>
+                  
+                  <div className="table-wrapper" style={{marginBottom:'2rem'}}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Field Target</th>
+                          <th>Nilai Berbeda (Unik)</th>
+                          <th>Kode Dihasilkan</th>
+                          <th>Contoh Nilai</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resultStats.detailed.map(s => (
+                          <tr key={s.field}>
+                            <td>{s.field}</td>
+                            <td>{s.orig_unique}</td>
+                            <td>{s.code_unique}</td>
+                            <td><span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{s.examples}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="chart-container">
+                    <div className="chart-y-axis">
+                      <span>50</span>
+                      <span>40</span>
+                      <span>30</span>
+                      <span>20</span>
+                      <span>10</span>
+                      <span>0</span>
+                    </div>
+                    {resultStats.detailed.map(s => {
+                      const maxVal = Math.max(...resultStats.detailed.map(d => Math.max(d.orig_unique, d.code_unique, 10)));
+                      const topHeight = Math.max(0, (s.orig_unique / maxVal) * 100);
+                      const bottomHeight = Math.max(0, (s.code_unique / maxVal) * 100);
+                      return (
+                        <div key={s.field} className="chart-bar-group">
+                          <div className="chart-bars">
+                            <div className="chart-bar-top" style={{height: `${topHeight}%`}} title={`Nilai Unik: ${s.orig_unique}`}></div>
+                            <div className="chart-bar-bottom" style={{height: `${bottomHeight}%`}} title={`Kode Dihasilkan: ${s.code_unique}`}></div>
+                          </div>
+                          <div className="chart-label">{s.field}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  
+                  <div className="chart-legend">
+                    <div className="legend-item"><div className="legend-color" style={{backgroundColor:'#8b5cf6'}}></div> Nilai Berbeda (Unik)</div>
+                    <div className="legend-item"><div className="legend-color" style={{backgroundColor:'#06b6d4'}}></div> Kode Dihasilkan</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="container-box">
               <div className="container-title">📥 Download Hasil</div>
-              <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>File Excel akan berisi 2 sheet: Data Asli (EDIT), dan HASIL.</p>
+              <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>Pilih format file hasil yang ingin Anda download.</p>
               
               <div style={{display:'flex', gap:'1rem'}}>
                 {downloadUrl && (
                   <a href={downloadUrl} download={file?.name ? file.name.replace('.xlsx', '_MAPPED.xlsx') : 'MAPPED.xlsx'} className="btn btn-primary" style={{flex: 1, padding:'0.8rem', background:'var(--accent-purple)', borderColor:'var(--accent-purple)'}}>
                     📥 Download Excel (.xlsx)
+                  </a>
+                )}
+                {csvDownloadUrl && (
+                  <a href={csvDownloadUrl} download={file?.name ? file.name.replace('.xlsx', '_MAPPED.csv') : 'MAPPED.csv'} className="btn btn-primary" style={{flex: 1, padding:'0.8rem', background:'transparent', color:'white', borderColor:'var(--border)'}}>
+                    📄 Download CSV
                   </a>
                 )}
               </div>
