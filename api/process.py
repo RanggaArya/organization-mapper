@@ -3,7 +3,11 @@ from fastapi.responses import Response, JSONResponse
 import json
 import pandas as pd
 from io import BytesIO
+import sys
+import os
 
+# Ensure the api folder is in the Python path
+sys.path.append(os.path.dirname(__file__))
 from core.processor import MappingConfig, MappingProcessor, build_excel_output
 
 app = FastAPI()
@@ -33,6 +37,8 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
         
         buf = BytesIO(contents)
         df = pd.read_excel(buf, sheet_name=sheet_name, header=header_row - 1)
+        # Strip column names to match the mapping which comes from stripped headers
+        df.columns = [str(c).strip() for c in df.columns]
         
         processor = MappingProcessor(df, mapping_config)
         df_result = processor.process()
