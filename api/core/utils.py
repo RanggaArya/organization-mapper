@@ -51,8 +51,11 @@ def generate_location_code(location_name: str, custom_map: dict | None = None) -
     if pd.isna(location_name) or location_name == "":
         return ""
     loc_upper = str(location_name).strip().upper()
-    if custom_map and loc_upper in custom_map:
-        return custom_map[loc_upper]
+    if custom_map:
+        # Normalize custom_map keys to upper case
+        custom_map_upper = {str(k).strip().upper(): v for k, v in custom_map.items()}
+        if loc_upper in custom_map_upper:
+            return custom_map_upper[loc_upper]
     return DEFAULT_LOCATION_MAP.get(loc_upper, loc_upper[:3].upper())
 
 
