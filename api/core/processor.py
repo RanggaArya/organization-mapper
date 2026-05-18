@@ -14,7 +14,7 @@ import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
 
-from core.utils import clean_text, generate_company_abbreviation, generate_location_code
+from .utils import clean_text, generate_company_abbreviation, generate_location_code
 
 
 # ──────────────────────── Config ────────────────────────
