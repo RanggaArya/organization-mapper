@@ -86,13 +86,7 @@ export default function Home() {
       const firstSheet = Object.keys(data.sheets)[0];
       if (firstSheet) {
           setSelectedSheet(firstSheet);
-          const cols = data.sheets[firstSheet].columns || [];
-          const initialMap = {};
-          targetFields.forEach(field => {
-            const match = cols.find(c => c.toLowerCase().includes(field.toLowerCase()));
-            if (match) initialMap[field] = match;
-          });
-          setColumnMapping(initialMap);
+          // Initial mapping will be done when headerRow is set
       }
     } catch (err) {
       setError(err.message);
@@ -129,10 +123,17 @@ export default function Home() {
       const pfx = {};
       const cc = {};
       const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const IGNORE_WORDS = ["PT", "CV", "TBK", "UD", "FIRMA", "LLC", "INC", "LTD", "CORP"];
+      
       (data.companies || []).forEach((c, i) => {
         let prefix = i < 26 ? letters[i] : letters[Math.floor(i/26)-1] + letters[i%26];
         pfx[c] = prefix;
-        let abbr = c.split(' ').map(w => w[0]).join('').substring(0,3).toUpperCase();
+        
+        let words = c.toUpperCase().replace(/\./g, "").split(/\s+/);
+        let validWords = words.filter(w => !IGNORE_WORDS.includes(w));
+        let abbr = validWords.map(w => w[0]).join('').substring(0,3);
+        if (!abbr) abbr = c.substring(0,3).toUpperCase();
+        
         cc[c] = abbr;
       });
       setCompanyPrefixes(pfx);
@@ -204,6 +205,29 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  const getHeaderColumns = () => {
+    if (!sheetsData[selectedSheet] || !sheetsData[selectedSheet].preview) return [];
+    const rowIdx = headerRow - 1;
+    const previewData = sheetsData[selectedSheet].preview;
+    if (rowIdx >= 0 && rowIdx < previewData.length) {
+      return previewData[rowIdx].map(c => typeof c === 'string' ? c.trim() : String(c).trim()).filter(c => c !== "");
+    }
+    return [];
+  };
+
+  // Auto-detect columns when header row changes
+  useEffect(() => {
+    if (step === 2 && sheetsData[selectedSheet]) {
+      const cols = getHeaderColumns();
+      const newMapping = {};
+      targetFields.forEach(field => {
+        const match = cols.find(c => c.toLowerCase() === field.toLowerCase() || c.toLowerCase().includes(field.toLowerCase()));
+        if (match) newMapping[field] = match;
+      });
+      setColumnMapping(newMapping);
+    }
+  }, [headerRow, selectedSheet, step]);
 
   return (
     <div className="app-container">
@@ -332,8 +356,8 @@ export default function Home() {
                       onChange={e => setColumnMapping({...columnMapping, [field]: e.target.value})}
                     >
                       <option value="">-- Abaikan --</option>
-                      {(sheetsData[selectedSheet]?.columns || []).map(col => (
-                        <option key={col} value={col}>{col}</option>
+                      {getHeaderColumns().map((col, idx) => (
+                        <option key={`${col}-${idx}`} value={col}>{col}</option>
                       ))}
                     </select>
                   </div>
