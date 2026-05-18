@@ -152,8 +152,10 @@ export default function Home() {
       setCompanyCodes(cc);
       
       const locCodes = {};
+      const defLocMap = data.default_location_map || {};
       (data.locations || []).forEach(l => {
-        let abbr = l.substring(0,3).toUpperCase();
+        let lUpper = l.trim().toUpperCase();
+        let abbr = defLocMap[lUpper] || l.substring(0,3).toUpperCase();
         locCodes[l] = abbr;
       });
       setLocationCodes(locCodes);

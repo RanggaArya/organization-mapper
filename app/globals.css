@@ -21,7 +21,7 @@
 }
 
 body {
-  background-color: var(--bg-main);
+  background: radial-gradient(circle at top right, #1e1b4b 0%, #0f1117 40%, #0f1117 100%);
   color: var(--text-main);
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
@@ -468,13 +468,14 @@ body {
 
 .chart-label {
   position: absolute;
-  bottom: -30px;
-  left: 25px;
+  top: 100%;
+  right: 50%;
   font-size: 0.75rem;
   color: var(--text-muted);
   transform: rotate(-45deg);
-  transform-origin: left center;
+  transform-origin: top right;
   white-space: nowrap;
+  margin-top: 10px;
 }
 
 .chart-legend {

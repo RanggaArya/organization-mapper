@@ -231,7 +231,7 @@ class MappingProcessor:
 
         # 6. Code Location
         if loc_col and loc_col in self.df.columns:
-            cust_loc = self.cfg.location_codes if self.cfg.code_mode == "custom" else None
+            cust_loc = self.cfg.location_codes if self.cfg.location_codes else None
             self.df[self._code_col("Location")] = self.df[loc_col].apply(
                 lambda v: generate_location_code(v, cust_loc)
             )

@@ -2,9 +2,13 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 import pandas as pd
 from io import BytesIO
+import sys
+import os
 import json
 
-app = FastAPI()
+# Ensure the api folder is in the Python path
+sys.path.append(os.path.dirname(__file__))
+from core.utils import DEFAULT_LEVEL_ORDER, DEFAULT_LOCATION_MAP
 
 @app.post("/api/extract")
 async def extract(file: UploadFile = File(...), config: str = Form(...)):
@@ -89,7 +93,8 @@ async def extract(file: UploadFile = File(...), config: str = Form(...)):
             "preview_columns": columns,
             "total_rows": len(df),
             "total_cols": len(columns),
-            "default_level_order": DEFAULT_LEVEL_ORDER
+            "default_level_order": DEFAULT_LEVEL_ORDER,
+            "default_location_map": DEFAULT_LOCATION_MAP
         })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
