@@ -57,7 +57,14 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
         # Prepare JSON response
         b64 = base64.b64encode(out_bytes).decode("utf-8")
         
-        csv_bytes = df_result.to_csv(index=False).encode('utf-8')
+        # Prevent Excel from stripping leading zeros in CSV
+        csv_df = df_result.copy()
+        for col in csv_df.columns:
+            csv_df[col] = csv_df[col].apply(
+                lambda x: f'="{x}"' if isinstance(x, str) and x.startswith('0') and x.isdigit() else x
+            )
+        
+        csv_bytes = csv_df.to_csv(index=False).encode('utf-8')
         csv_b64 = base64.b64encode(csv_bytes).decode("utf-8")
         
         preview_df = df_result.head(1000).fillna("")
