@@ -3,35 +3,10 @@ from fastapi.responses import Response, JSONResponse
 import json
 import pandas as pd
 from io import BytesIO
-from openpyxl import load_workbook
 
 from core.processor import MappingConfig, MappingProcessor, build_excel_output
 
 app = FastAPI()
-
-@app.post("/api/analyze")
-async def analyze(file: UploadFile = File(...)):
-    contents = await file.read()
-    try:
-        buf = BytesIO(contents)
-        wb = load_workbook(buf, read_only=True, data_only=True)
-        sheets = wb.sheetnames
-        
-        result = {}
-        for sheet in sheets:
-            ws = wb[sheet]
-            headers = []
-            # Ambil beberapa baris pertama untuk mencari header
-            for row in ws.iter_rows(min_row=1, max_row=3, values_only=True):
-                for cell in row:
-                    if cell is not None and str(cell).strip():
-                        headers.append(str(cell).strip())
-            # Hapus duplikat
-            result[sheet] = list(dict.fromkeys(headers))
-            
-        return JSONResponse({"sheets": result})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
 
 @app.post("/api/process")
 async def process(file: UploadFile = File(...), config: str = Form(...)):
@@ -56,15 +31,12 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
             use_company_prefix=bool(cfg_dict.get("use_company_prefix", False))
         )
         
-        # Load df
         buf = BytesIO(contents)
         df = pd.read_excel(buf, sheet_name=sheet_name, header=header_row - 1)
         
-        # Process
         processor = MappingProcessor(df, mapping_config)
         df_result = processor.process()
         
-        # Build Output
         out_bytes = build_excel_output(
             contents,
             sheet_name,
