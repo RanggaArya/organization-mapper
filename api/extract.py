@@ -65,7 +65,7 @@ async def extract(file: UploadFile = File(...), config: str = Form(...)):
                 level_counts[lev] = count
                 
         # Generate data preview
-        preview_df = df.head(50).fillna("")
+        preview_df = df.head(1000).fillna("")
         preview_data = preview_df.values.tolist()
         columns = preview_df.columns.tolist()
         

@@ -777,8 +777,8 @@ export default function Home() {
                       return (
                         <div key={s.field} className="chart-bar-group">
                           <div className="chart-bars">
-                            <div className="chart-bar-top" style={{height: `${topHeight}%`}} title={`Nilai Unik: ${s.orig_unique}`}></div>
-                            <div className="chart-bar-bottom" style={{height: `${bottomHeight}%`}} title={`Kode Dihasilkan: ${s.code_unique}`}></div>
+                            <div className="chart-bar-orig" style={{height: `${topHeight}%`}} title={`Nilai Unik: ${s.orig_unique}`}></div>
+                            <div className="chart-bar-code" style={{height: `${bottomHeight}%`}} title={`Kode Dihasilkan: ${s.code_unique}`}></div>
                           </div>
                           <div className="chart-label">{s.field}</div>
                         </div>

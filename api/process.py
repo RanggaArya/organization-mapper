@@ -60,7 +60,7 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
         csv_bytes = df_result.to_csv(index=False).encode('utf-8')
         csv_b64 = base64.b64encode(csv_bytes).decode("utf-8")
         
-        preview_df = df_result.head(50).fillna("")
+        preview_df = df_result.head(1000).fillna("")
         preview_data = preview_df.values.tolist()
         columns = preview_df.columns.tolist()
         
