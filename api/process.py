@@ -5,6 +5,8 @@ import pandas as pd
 from io import BytesIO
 import sys
 import os
+import base64
+import time
 
 # Ensure the api folder is in the Python path
 sys.path.append(os.path.dirname(__file__))
@@ -35,6 +37,7 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
             use_company_prefix=bool(cfg_dict.get("use_company_prefix", False))
         )
         
+        start_time = time.time()
         buf = BytesIO(contents)
         df = pd.read_excel(buf, sheet_name=sheet_name, header=header_row - 1, dtype=str)
         # Strip column names to match the mapping which comes from stripped headers
@@ -51,14 +54,26 @@ async def process(file: UploadFile = File(...), config: str = Form(...)):
             data_start_row=data_start_row
         )
         
-        filename = file.filename or "Master_Organization_MAPPED.xlsx"
-        if not filename.endswith("_MAPPED.xlsx"):
-            filename = filename.replace(".xlsx", "_MAPPED.xlsx")
-            
-        return Response(
-            content=out_bytes,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-        )
+        # Prepare JSON response
+        b64 = base64.b64encode(out_bytes).decode("utf-8")
+        
+        preview_df = df_result.head(50).fillna("")
+        preview_data = preview_df.values.tolist()
+        columns = preview_df.columns.tolist()
+        
+        unique_companies = df_result["Code Company"].nunique() if "Code Company" in df_result.columns else 0
+        unique_codes = df_result["Code Position"].nunique() if "Code Position" in df_result.columns else len(df_result)
+        
+        return JSONResponse({
+            "excel_base64": b64,
+            "preview_data": preview_data,
+            "preview_columns": columns,
+            "stats": {
+                "total_rows": len(df_result),
+                "companies": unique_companies,
+                "unique_codes": unique_codes,
+                "time": round(time.time() - start_time, 2)
+            }
+        })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)

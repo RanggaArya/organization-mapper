@@ -36,6 +36,8 @@ export default function Home() {
   const [selectedSheet, setSelectedSheet] = useState('');
   const [headerRow, setHeaderRow] = useState(2);
   const [dataStartRow, setDataStartRow] = useState(3);
+  const [colStart, setColStart] = useState(1);
+  const [colEnd, setColEnd] = useState(0);
   const targetFields = ["Company", "Directorate", "Division", "Department", "Section", "Location", "Level", "Job Title", "Position"];
   const [columnMapping, setColumnMapping] = useState({});
   
@@ -46,6 +48,8 @@ export default function Home() {
   const [locations, setLocations] = useState([]);
   const [previewData, setPreviewData] = useState([]);
   const [previewColumns, setPreviewColumns] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
+  const [totalCols, setTotalCols] = useState(0);
   
   // Step 3 State
   const [codeMode, setCodeMode] = useState('default'); 
@@ -64,6 +68,9 @@ export default function Home() {
   
   // Step 5 State
   const [downloadUrl, setDownloadUrl] = useState(null);
+  const [resultStats, setResultStats] = useState({});
+  const [resultPreviewData, setResultPreviewData] = useState([]);
+  const [resultPreviewCols, setResultPreviewCols] = useState([]);
   
   const fileInputRef = useRef(null);
 
@@ -105,6 +112,9 @@ export default function Home() {
     formData.append('config', JSON.stringify({
       sheet_name: selectedSheet,
       header_row: headerRow,
+      data_start_row: dataStartRow,
+      col_start: colStart > 0 ? colStart : null,
+      col_end: colEnd > 0 ? colEnd : null,
       column_mapping: columnMapping
     }));
     
@@ -146,10 +156,11 @@ export default function Home() {
       });
       setLocationCodes(locCodes);
       
-      const defaultOrder = {"BOD": 1, "GM": 2, "MGR": 3, "SPV": 4, "STAFF": 5};
+      const defaultOrder = data.default_level_order || {};
       const lo = {};
       (data.levels || []).forEach((l, i) => {
-        lo[l] = defaultOrder[l] || (i + 6);
+        let fallback = i + 6;
+        lo[l] = defaultOrder[l] || fallback;
       });
       setLevelOrder(lo);
       
@@ -160,6 +171,38 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  const fetchLivePreview = async () => {
+    if (!file || !selectedSheet) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('config', JSON.stringify({
+      sheet_name: selectedSheet,
+      header_row: headerRow,
+      data_start_row: dataStartRow,
+      col_start: colStart > 0 ? colStart : null,
+      col_end: colEnd > 0 ? colEnd : null,
+      column_mapping: columnMapping
+    }));
+    try {
+      const res = await fetch('/api/extract', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        setPreviewData(data.preview_data || []);
+        setPreviewColumns(data.preview_columns || []);
+        setTotalRows(data.total_rows || 0);
+        setTotalCols(data.total_cols || 0);
+      }
+    } catch (err) {
+      // Ignore errors in background live preview
+    }
+  };
+
+  useEffect(() => {
+    if (step === 2) {
+      fetchLivePreview();
+    }
+  }, [headerRow, dataStartRow, colStart, colEnd, selectedSheet, step]);
 
   const handleProcess = async () => {
     setLoading(true);
@@ -188,16 +231,25 @@ export default function Home() {
     
     try {
       const res = await fetch('/api/process', { method: 'POST', body: formData });
+      const data = await res.json();
       if (!res.ok) {
-        const text = await res.text();
-        let errData;
-        try { errData = JSON.parse(text); } catch(e) { throw new Error("Server error: " + text.substring(0, 100)); }
-        throw new Error(errData.error || 'Failed to process file');
+        throw new Error(data.error || 'Failed to process file');
       }
       
-      const blob = await res.blob();
+      const byteCharacters = atob(data.excel_base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
+      
       setDownloadUrl(url);
+      setResultStats(data.stats || {});
+      setResultPreviewData(data.preview_data || []);
+      setResultPreviewCols(data.preview_columns || []);
+      
       setStep(5);
     } catch (err) {
       setError(err.message);
@@ -339,6 +391,8 @@ export default function Home() {
               <div className="grid-2">
                 <NumberInput label="Baris Header (1-indexed)" value={headerRow} onChange={setHeaderRow} min={1} />
                 <NumberInput label="Data Mulai dari Baris" value={dataStartRow} onChange={setDataStartRow} min={2} />
+                <NumberInput label="Kolom Mulai (1 = A)" value={colStart} onChange={setColStart} min={1} />
+                <NumberInput label="Kolom Akhir (0 = Auto)" value={colEnd} onChange={setColEnd} min={0} />
               </div>
             </div>
 
@@ -367,7 +421,10 @@ export default function Home() {
 
             {previewData.length > 0 && (
               <div className="container-box" style={{padding: 0, overflow: 'hidden'}}>
-                <div className="container-title" style={{padding: '1.5rem 1.5rem 0'}}>👁️ Preview Data Terkonfigurasi (50 baris)</div>
+                <div className="container-title" style={{padding: '1.5rem 1.5rem 0.5rem', marginBottom: 0}}>👁️ Preview Data Terkonfigurasi</div>
+                <div style={{padding: '0 1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem'}}>
+                  Tampil <strong>{previewData.length}</strong> baris dari total <strong>{totalRows}</strong> baris, <strong>{totalCols}</strong> kolom
+                </div>
                 <div className="table-wrapper" style={{margin: '1.5rem', border: 'none'}}>
                   <table className="data-table">
                     <thead>
@@ -614,17 +671,64 @@ export default function Home() {
         )}
         
         {step === 5 && (
-          <div className="container-box" style={{textAlign:'center', padding:'4rem 2rem'}}>
-            <div style={{fontSize:'4rem', marginBottom:'1rem'}}>🎉</div>
-            <h2 className="step-title" style={{justifyContent:'center', marginBottom:'1rem'}}>Mapping Selesai!</h2>
-            <p style={{color:'var(--text-muted)', marginBottom:'2rem'}}>File Excel Anda telah berhasil diproses.</p>
-            {downloadUrl && (
-              <a href={downloadUrl} download={file?.name ? file.name.replace('.xlsx', '_MAPPED.xlsx') : 'MAPPED.xlsx'} className="btn btn-primary" style={{display:'inline-flex', width:'auto', padding:'0.8rem 2rem'}}>
-                📥 Download File Hasil Mapping
-              </a>
-            )}
-            <div style={{marginTop:'3rem'}}>
-              <button className="btn" onClick={() => setStep(1)}>Mulai Baru Lagi</button>
+          <div>
+            <h2 className="step-title">🗂️ Preview & Download</h2>
+            <p className="step-subtitle">Hasil mapping kode organisasi Anda. Periksa hasilnya, lalu download file Excel.</p>
+            
+            <div className="grid-3" style={{marginBottom:'1.5rem'}}>
+              <div className="container-box" style={{textAlign:'center', marginBottom:0}}>
+                <div style={{color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'0.5rem'}}>📊 Total Baris</div>
+                <div style={{fontSize:'1.8rem', fontWeight:700}}>{resultStats.total_rows || 0}</div>
+              </div>
+              <div className="container-box" style={{textAlign:'center', marginBottom:0}}>
+                <div style={{color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'0.5rem'}}>🏢 Company</div>
+                <div style={{fontSize:'1.8rem', fontWeight:700}}>{resultStats.companies || 0}</div>
+              </div>
+              <div className="container-box" style={{textAlign:'center', marginBottom:0}}>
+                <div style={{color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'0.5rem'}}>⚡ Waktu Proses</div>
+                <div style={{fontSize:'1.8rem', fontWeight:700}}>{resultStats.time || 0}s</div>
+              </div>
+            </div>
+
+            <div className="container-box" style={{padding: 0, overflow: 'hidden'}}>
+              <div className="container-title" style={{padding: '1.5rem 1.5rem 0'}}>👁️ Tabel Hasil Mapping (Preview)</div>
+              <div className="table-wrapper" style={{margin: '1.5rem', border: 'none'}}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      {resultPreviewCols.map((col, i) => (
+                        <th key={i}>{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultPreviewData.map((row, rIdx) => (
+                      <tr key={rIdx}>
+                        {row.map((cell, cIdx) => (
+                          <td key={cIdx}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="container-box">
+              <div className="container-title">📥 Download Hasil</div>
+              <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>File Excel akan berisi 2 sheet: Data Asli (EDIT), dan HASIL.</p>
+              
+              <div style={{display:'flex', gap:'1rem'}}>
+                {downloadUrl && (
+                  <a href={downloadUrl} download={file?.name ? file.name.replace('.xlsx', '_MAPPED.xlsx') : 'MAPPED.xlsx'} className="btn btn-primary" style={{flex: 1, padding:'0.8rem', background:'var(--accent-purple)', borderColor:'var(--accent-purple)'}}>
+                    📥 Download Excel (.xlsx)
+                  </a>
+                )}
+              </div>
+            </div>
+            
+            <div style={{marginTop:'1.5rem'}}>
+              <button className="btn" onClick={() => setStep(1)} style={{width:'100%'}}>Mulai Baru Lagi</button>
             </div>
           </div>
         )}

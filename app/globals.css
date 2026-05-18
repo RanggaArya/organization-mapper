@@ -141,7 +141,7 @@ body {
   flex: 1;
   margin-left: var(--sidebar-width);
   padding: 2rem 3rem;
-  max-width: 1200px;
+  max-width: 100%;
 }
 
 .step-title {
